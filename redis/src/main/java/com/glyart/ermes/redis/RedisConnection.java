@@ -15,30 +15,36 @@ public class RedisConnection implements IConnection<RedisMessagingChannel, Jedis
         this.credentials = credentials;
     }
 
+    public static RedisConnection create(RedisCredentials credentials) {
+        return new RedisConnection(credentials);
+    }
+
     @Override
     public void connect() {
-        this.pool = new JedisPool(new JedisPoolConfig(), credentials.hostname(), credentials.port(), Protocol.DEFAULT_TIMEOUT, credentials.password());
+        final String password = this.credentials.password();
+        if (password.isEmpty()) {
+            this.pool = new JedisPool(new JedisPoolConfig(), this.credentials.hostname(), this.credentials.port(), Protocol.DEFAULT_TIMEOUT);
+            return;
+        }
+
+        this.pool = new JedisPool(new JedisPoolConfig(), this.credentials.hostname(), this.credentials.port(), Protocol.DEFAULT_TIMEOUT, this.credentials.password());
     }
 
     @Override
     public void disconnect() {
-        pool.close();
+        this.pool.close();
     }
 
     @Override
     public RedisMessagingChannel createChannel(String name, IDataCompressor compressor, boolean canConsumeMessages, int compressionThreshold) {
-        RedisMessagingChannel channel = new RedisMessagingChannel(name, compressor, canConsumeMessages, compressionThreshold);
+        final RedisMessagingChannel channel = new RedisMessagingChannel(name, compressor, canConsumeMessages, compressionThreshold);
         channel.connect(this);
         return channel;
     }
 
     @Override
     public JedisPool getConnection() {
-        return pool;
-    }
-
-    public static RedisConnection create(RedisCredentials credentials) {
-        return new RedisConnection(credentials);
+        return this.pool;
     }
 
 }
